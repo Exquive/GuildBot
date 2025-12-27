@@ -11,7 +11,7 @@ FORM_CHANNEL_NAME = "ankety"
 LOG_CHANNEL_NAME = "bot-logs"
 
 OFFICER_ROLE_NAMES = ["Officer Crew", "GM"]
-ROLE_AFTER_FORM = "Member"
+ROLE_AFTER_FORM = "Trial"
 
 TIMEOUT_SECONDS = 3000
 
