@@ -16,15 +16,15 @@ ROLE_AFTER_FORM = "Trial"
 TIMEOUT_SECONDS = 3000
 
 QUESTIONS = [
-    "1️⃣ **Питання:**\nДосвід та класи: Ваш досвід гри на патчі 3.3.5a. Класи та спеціалізації, якими володієте на високому рівні. Вкажіть ключові досягнення (LoD, Bane, RS 25HC), якщо є.",
-    "2️⃣ **Питання:**\nПріоритети: Ваша мета в гільдії — жорсткий прогрес (спідрани, мін-максинг) чи стабільне закриття контенту в адекватні терміни?",
-    "3️⃣ **Питання:**\nРейд-тайм: Чи підходить вам наш графік (Середа/Четверг/Неділя(Опціонально) - 19:00)? Чи гарантуєте стабільний онлайн без запізнень?",
-    "4️⃣ **Питання:**\nІнтерфейс: Надішліть скриншот вашого UI в рейді або бойовому режимі. Офіцери мають бачити бі́нди та актуальні аддони.",
-    "5️⃣ **Питання:**\nОптимізація (Min-Max): Які професії прокачані на персонажі? Чи готові ви змінити їх для мін-максу за потреби рейду?",
-    "6️⃣ **Питання:**\nКоординація: Наявність мікрофона та можливість активного спілкування в Discord. Чи готові ви оперативно доповідати про механіки?",
-    "7️⃣ **Питання:**\nАльти: Чи є у вас підготовлені альти для заміни в рейдах?",
-    "8️⃣ **Питання:**\nІсторія: Попередня гільдія та причина переходу.",
-    "9️⃣ **Питання:**\nПідготовка: Хімія, їжа, pre-pot на кожному пулі."
+    "1️⃣ **Питання:**\nДосвід та класи: Ваш досвід гри на патчі 3.3.5a.",
+    "2️⃣ **Питання:**\nПріоритети: Мета в гільдії.",
+    "3️⃣ **Питання:**\nРейд-тайм: Чи підходить графік?",
+    "4️⃣ **Питання:**\nІнтерфейс: Надішліть скриншот UI.",
+    "5️⃣ **Питання:**\nОптимізація: Професії та min-max.",
+    "6️⃣ **Питання:**\nКоординація: Мікрофон, Discord.",
+    "7️⃣ **Питання:**\nАльти.",
+    "8️⃣ **Питання:**\nІсторія: Попередня гільдія.",
+    "9️⃣ **Питання:**\nПідготовка: Хімія, їжа, pre-pot."
 ]
 
 QUESTION_TITLES = [
@@ -49,17 +49,27 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # ================= ЛОГИ =================
 
-async def send_log(guild, text):
+async def send_log(guild, content=None, view=None):
     channel = discord.utils.get(guild.text_channels, name=LOG_CHANNEL_NAME)
     if channel:
-        await channel.send(text)
+        await channel.send(content=content, view=view)
 
 # ================= VIEW =================
 
+class LogLinkView(discord.ui.View):
+    def __init__(self, url):
+        super().__init__(timeout=None)
+        self.add_item(discord.ui.Button(
+            label="🔗 Перейти до анкети",
+            url=url,
+            style=discord.ButtonStyle.link
+        ))
+
 class ReviewView(discord.ui.View):
-    def __init__(self, member):
+    def __init__(self, member, anketa_url):
         super().__init__(timeout=None)
         self.member = member
+        self.anketa_url = anketa_url
 
     def disable_buttons(self):
         for item in self.children:
@@ -78,11 +88,20 @@ class ReviewView(discord.ui.View):
             await self.member.add_roles(role)
 
         try:
-            await self.member.send("🟢 Анкету схвалено! Ласкаво просимо 🎉")
+            await self.member.send(
+                "🟢 **Анкету схвалено!**\n"
+                "Ласкаво просимо до гільдії 🎉"
+            )
         except:
             pass
 
-        await send_log(interaction.guild, f"🟢 Прийнято: {self.member} ({interaction.user})")
+        await send_log(
+            interaction.guild,
+            f"🟢 **Прийнято:** {self.member.mention}\n"
+            f"👮 Офіцер: {interaction.user.mention}",
+            view=LogLinkView(self.anketa_url)
+        )
+
         self.disable_buttons()
         await interaction.message.edit(view=self)
         await interaction.response.send_message("✅ Прийнято", ephemeral=True)
@@ -90,11 +109,17 @@ class ReviewView(discord.ui.View):
     @discord.ui.button(label="🔴 Відхилити", style=discord.ButtonStyle.danger)
     async def reject(self, interaction, button):
         try:
-            await self.member.send("🔴 Анкету відхилено.")
+            await self.member.send("🔴 **Анкету відхилено.**")
         except:
             pass
 
-        await send_log(interaction.guild, f"🔴 Відхилено: {self.member} ({interaction.user})")
+        await send_log(
+            interaction.guild,
+            f"🔴 **Відхилено:** {self.member.mention}\n"
+            f"👮 Офіцер: {interaction.user.mention}",
+            view=LogLinkView(self.anketa_url)
+        )
+
         self.disable_buttons()
         await interaction.message.edit(view=self)
         await interaction.response.send_message("❌ Відхилено", ephemeral=True)
@@ -102,11 +127,12 @@ class ReviewView(discord.ui.View):
 # ================= АНКЕТА =================
 
 async def start_form(member):
-    await send_log(member.guild, f"📝 Запуск анкети: {member}")
+    await send_log(member.guild, f"📝 **Запуск анкети:** {member.mention}")
+
     dm = await member.create_dm()
     answers = []
 
-    await dm.send(f"👋 Вітаємо, **{member.name}**!\nАнкета запущена офіцером.")
+    await dm.send(f"👋 Вітаємо, **{member.name}**!\nАнкета запущена.")
 
     await asyncio.sleep(3)
 
@@ -117,16 +143,17 @@ async def start_form(member):
             return m.author == member and isinstance(m.channel, discord.DMChannel)
 
         msg = await bot.wait_for("message", check=check, timeout=TIMEOUT_SECONDS)
+
         answers.append({
             "text": msg.content if msg.content else "📎 Файл",
             "file": msg.attachments[0].url if msg.attachments else None
         })
 
-    await dm.send("✅ Дякуємо! Анкета на розгляді ⏳")
+    await dm.send("✅ **Дякуємо!** Анкета передана офіцерам ⏳")
 
-    form = f"📋 **Нова анкета**\n👤 {member.mention}\n\n"
+    form_text = f"📋 **Нова анкета**\n👤 {member.mention}\n\n"
     for i, a in enumerate(answers):
-        form += f"**{QUESTION_TITLES[i]}:**\n{a['text']}\n\n"
+        form_text += f"**{QUESTION_TITLES[i]}:**\n{a['text']}\n\n"
 
     channel = discord.utils.get(member.guild.text_channels, name=FORM_CHANNEL_NAME)
 
@@ -136,7 +163,10 @@ async def start_form(member):
         if role:
             mentions.append(role.mention)
 
-    await channel.send(f"{' '.join(mentions)}\n\n{form}", view=ReviewView(member))
+    anketa_message = await channel.send(f"{' '.join(mentions)}\n\n{form_text}")
+    anketa_url = anketa_message.jump_url
+
+    await anketa_message.edit(view=ReviewView(member, anketa_url))
 
     for a in answers:
         if a["file"]:
