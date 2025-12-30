@@ -10,7 +10,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 FORM_CHANNEL_NAME = "ankety"
 LOG_CHANNEL_NAME = "bot-logs"
 
-OFFICER_ROLE_NAMES = ["Officer Crew", "GM"]
+OFFICER_ROLE_NAMES = ["Officer Crew", "GM", "Officer"]
 ROLE_AFTER_FORM = "Trial"
 
 TIMEOUT_SECONDS = 3000
